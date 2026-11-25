@@ -1,0 +1,95 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Signal lost" description="This page drifted out of orbit." noindex>
+  <section class="lost container" aria-labelledby="lost-title">
+    <p class="kicker">Error 404 · Signal lost</p>
+    <h1 id="lost-title">
+      <span class="code" data-text="404" aria-hidden="true">
+        404
+      </span>
+      <span class="title">Lost in space.</span>
+    </h1>
+    <p class="text">This page drifted out of orbit, or never launched in the first place.</p>
+    <a class="btn btn-primary" href="/">
+      Return to mission control
+    </a>
+  </section>
+</BaseLayout>
+
+<style>
+  .lost {
+    min-height: 100svh;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--space-6);
+    padding-block: var(--header-h);
+    text-align: center;
+  }
+
+  h1 {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  .code {
+    position: relative;
+    font-size: clamp(7rem, 30vw, 18rem);
+    font-weight: 700;
+    letter-spacing: -0.08em;
+    line-height: 0.8;
+    color: transparent;
+    -webkit-text-stroke: 1.5px var(--c-fg);
+  }
+
+  /* Glitch slices */
+  .code::before,
+  .code::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    -webkit-text-stroke: 1.5px var(--c-accent);
+    clip-path: inset(0 0 60% 0);
+    animation: glitch 3.5s steps(1) infinite;
+  }
+
+  .code::after {
+    -webkit-text-stroke-color: var(--c-accent-hot);
+    clip-path: inset(55% 0 0 0);
+    animation-delay: -1.7s;
+  }
+
+  @keyframes glitch {
+    0%,
+    86%,
+    100% {
+      translate: 0;
+      opacity: 0;
+    }
+    88% {
+      translate: -6px 0;
+      opacity: 1;
+    }
+    91% {
+      translate: 5px 0;
+      opacity: 1;
+    }
+    94% {
+      translate: -2px 0;
+      opacity: 1;
+    }
+  }
+
+  .title {
+    font-size: var(--fs-xl);
+    letter-spacing: -0.05em;
+  }
+
+  .text {
+    max-width: 36ch;
+    color: var(--c-muted);
+    font-size: var(--fs-md);
+  }
+</style>

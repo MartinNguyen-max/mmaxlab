@@ -1,0 +1,385 @@
+---
+/**
+ * A tiny drivable planet with one screen per live project.
+ * three.js is only downloaded when the section comes near the viewport, and the game only
+ * renders while it is visible. The project list below covers the same content without the game.
+ */
+import { getCollection } from 'astro:content';
+import { getImage } from 'astro:assets';
+import { sortProjects } from '../lib/projects';
+import Icon from './Icon.astro';
+
+const projects = sortProjects(await getCollection('projects'));
+const live = await Promise.all(
+  projects
+    .filter((p) => p.data.status === 'live' && p.data.url)
+    .map(async (p) => ({
+      id: p.id,
+      name: p.data.name,
+      tagline: p.data.tagline,
+      url: p.data.url ?? '',
+      ...(p.data.image
+        ? { image: (await getImage({ src: p.data.image, width: 1280, format: 'webp' })).src }
+        : {}),
+    })),
+);
+const lab = projects
+  .filter((p) => p.data.status !== 'live')
+  .map((p) => ({ name: p.data.name, tagline: p.data.tagline }));
+const data = JSON.stringify({ live, lab });
+---
+
+<section id="planet" class="planet" aria-labelledby="planet-title" data-planet>
+  <canvas
+    class="planet-canvas"
+    tabindex="0"
+    aria-label="Interactive planet. Drive with the arrow keys or W A S D, press Enter at a screen to open that project, Escape to stop driving. All projects are also listed below."
+    data-planet-canvas
+  ></canvas>
+
+  <div class="poster" aria-hidden="true">
+    <span class="poster-planet"></span>
+  </div>
+
+  <header class="head">
+    <p class="kicker">01 — Landing zone</p>
+    <h2 id="planet-title">Take the rover for a spin</h2>
+    <p class="hint hint-keys">
+      <kbd>W</kbd>
+      <kbd>A</kbd>
+      <kbd>S</kbd>
+      <kbd>D</kbd> or arrows to drive · click a screen to visit
+    </p>
+    <p class="hint hint-touch">Tap the ground to drive · tap a screen to visit</p>
+  </header>
+
+  <button class="btn btn-primary start" type="button" data-planet-start>
+    <Icon name="arrow-up-right" size={16} />
+    Start driving
+  </button>
+
+  <p class="esc mono" aria-hidden="true">
+    Esc to stop driving
+  </p>
+
+  <div class="card" data-planet-card aria-live="polite" hidden>
+    <p class="kicker card-kicker">Nearby</p>
+    <p class="card-title" data-card-title></p>
+    <p class="card-text" data-card-text></p>
+    <ul class="card-list" data-card-list hidden></ul>
+    <button class="btn btn-primary" type="button" data-card-open>
+      <span data-card-label>Open</span>
+      <kbd class="enter" aria-hidden="true">
+        ↵
+      </kbd>
+    </button>
+  </div>
+
+  <div class="flyout" aria-hidden="true">
+    <img alt="" data-flyout-img />
+  </div>
+
+  <script type="application/json" data-planet-data set:html={data} />
+</section>
+
+<script>
+  import type { mountPlanet as Mount } from '../scripts/planet/game';
+
+  let game: ReturnType<typeof Mount> = null;
+
+  function init() {
+    const root = document.querySelector<HTMLElement>('[data-planet]');
+    if (!root) return;
+    const probe = document.createElement('canvas').getContext('webgl2');
+    if (!probe) {
+      root.classList.add('no-webgl');
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        void import('../scripts/planet/game').then(({ mountPlanet }) => {
+          if (root.isConnected) game = mountPlanet(root);
+        });
+      },
+      { rootMargin: '120% 0px' },
+    );
+    io.observe(root);
+    document.addEventListener(
+      'astro:before-swap',
+      () => {
+        io.disconnect();
+        game?.destroy();
+        game = null;
+      },
+      { once: true },
+    );
+  }
+
+  document.addEventListener('astro:page-load', init);
+</script>
+
+<style>
+  .planet {
+    position: relative;
+    height: calc(100svh - var(--header-h));
+    min-height: 30rem;
+    overflow: hidden;
+    background: linear-gradient(180deg, #4f9ff0, #a9d6ff 60%, #eef8ff);
+    color: #10233a;
+    isolation: isolate;
+  }
+
+  :global(:root:not([data-theme='light'])) .planet {
+    background: linear-gradient(180deg, #0b0e2e, #3b2766 55%, #ff9a66);
+    color: #f5efe8;
+  }
+
+  .planet-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    touch-action: pan-y;
+    cursor: crosshair;
+    opacity: 0;
+    transition: opacity 800ms var(--ease-out);
+  }
+
+  .planet-canvas:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--c-accent) 70%, transparent);
+    outline-offset: -2px;
+  }
+
+  :global(.is-ready) .planet-canvas {
+    opacity: 1;
+  }
+
+  /* Static stand-in until the game has loaded (and the fallback without WebGL). */
+  .poster {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: end center;
+    z-index: -1;
+  }
+
+  .poster-planet {
+    width: min(140vw, 70rem);
+    aspect-ratio: 1;
+    margin-bottom: max(-90vw, -46rem);
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 30%, #8fd96a, #4fae43 45%, #2f7d32);
+    box-shadow: 0 -10px 60px rgb(255 255 255 / 0.35);
+  }
+
+  .head {
+    position: absolute;
+    top: var(--space-8);
+    left: var(--gutter);
+    right: var(--gutter);
+    display: grid;
+    gap: var(--space-2);
+    justify-items: start;
+    pointer-events: none;
+  }
+
+  .head h2 {
+    font-size: var(--fs-xl);
+    letter-spacing: -0.05em;
+    line-height: 0.95;
+    text-wrap: balance;
+    text-shadow: 0 1px 24px rgb(255 255 255 / 0.4);
+  }
+
+  :global(:root:not([data-theme='light'])) .head h2 {
+    text-shadow: 0 2px 24px rgb(0 0 0 / 0.5);
+  }
+
+  .head .kicker {
+    color: inherit;
+    opacity: 0.85;
+  }
+
+  .hint {
+    font-size: var(--fs-sm);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-pill);
+    background: rgb(255 255 255 / 0.6);
+    color: #10233a;
+    backdrop-filter: blur(8px);
+  }
+
+  kbd {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.5em;
+    margin-inline: 0.1em;
+    padding: 0 0.3em;
+    border: 1px solid rgb(16 35 58 / 0.3);
+    border-bottom-width: 2px;
+    border-radius: 0.3em;
+    font-family: var(--font-mono);
+    font-size: 0.8em;
+  }
+
+  .hint-touch {
+    display: none;
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    .hint-keys {
+      display: none;
+    }
+
+    .hint-touch {
+      display: block;
+    }
+  }
+
+  .start {
+    position: absolute;
+    left: 50%;
+    bottom: var(--space-12);
+    translate: -50% 0;
+    box-shadow: 0 12px 40px -10px rgb(0 0 0 / 0.4);
+    transition:
+      opacity var(--dur) var(--ease-out),
+      translate var(--dur) var(--ease-out);
+  }
+
+  .planet:not(.is-ready) .start,
+  :global(.is-engaged) .start,
+  :global(.no-webgl) .start,
+  :global(.no-webgl) .hint {
+    opacity: 0;
+    translate: -50% 1rem;
+    pointer-events: none;
+  }
+
+  .esc {
+    position: absolute;
+    right: var(--gutter);
+    bottom: var(--space-6);
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-pill);
+    background: rgb(0 0 0 / 0.35);
+    color: #fff;
+    opacity: 0;
+    transition: opacity var(--dur) var(--ease-out);
+  }
+
+  @media (hover: hover) {
+    :global(.is-engaged) .esc {
+      opacity: 1;
+    }
+  }
+
+  /* Info card for the nearest screen or the lab */
+  .card {
+    position: absolute;
+    left: 50%;
+    bottom: var(--space-8);
+    translate: -50% 0;
+    width: min(26rem, calc(100% - 2 * var(--gutter)));
+    display: grid;
+    gap: var(--space-2);
+    justify-items: start;
+    padding: var(--space-4) var(--space-6) var(--space-6);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-lg);
+    background: var(--c-glass);
+    color: var(--c-fg);
+    backdrop-filter: blur(16px) saturate(1.4);
+    box-shadow: 0 20px 60px -20px rgb(0 0 0 / 0.45);
+    animation: card-in 400ms var(--ease-out);
+  }
+
+  /* Component display rules (e.g. .btn's inline-flex) would otherwise override [hidden]. */
+  .card[hidden],
+  .card [hidden] {
+    display: none;
+  }
+
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      translate: -50% 0.75rem;
+    }
+  }
+
+  .card-kicker {
+    color: var(--c-accent-ink);
+  }
+
+  .card-title {
+    font-size: var(--fs-lg);
+    font-weight: 650;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .card-text {
+    color: var(--c-muted);
+  }
+
+  .card-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: 0;
+    list-style: none;
+  }
+
+  .card-list :global(li) {
+    padding: 0.15rem var(--space-3);
+    border: 1px solid var(--c-line-strong);
+    border-radius: var(--radius-pill);
+    font-size: var(--fs-sm);
+  }
+
+  .card .btn {
+    margin-top: var(--space-2);
+  }
+
+  .enter {
+    border-color: currentColor;
+    opacity: 0.6;
+  }
+
+  /* Flying into a screen: the screenshot fades up to cover everything just before we leave. */
+  .flyout {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 360ms var(--ease-in-out);
+  }
+
+  .flyout img {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  :global(.is-arriving) .flyout {
+    opacity: 1;
+  }
+
+  :global(.is-flying) .head,
+  :global(.is-flying) .card,
+  :global(.is-flying) .esc {
+    opacity: 0;
+    transition: opacity 300ms;
+  }
+
+  .start :global(svg) {
+    rotate: 45deg;
+  }
+</style>

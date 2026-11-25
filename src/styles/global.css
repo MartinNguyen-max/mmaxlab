@@ -1,0 +1,320 @@
+@import './tokens.css';
+
+/* ---------- Reset ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  scroll-padding-top: calc(var(--header-h) + var(--space-4));
+  /* Background lives on <html> so the fixed WebGL canvas (z-index: -1) paints above it. */
+  background:
+    radial-gradient(60rem 40rem at 50% 30%, rgb(255 110 20 / 0.14), transparent 70%) fixed,
+    var(--c-bg);
+  interpolate-size: allow-keywords;
+}
+
+body {
+  min-height: 100svh;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  color: var(--c-fg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+::selection {
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Utilities ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.container {
+  width: min(100% - 2 * var(--gutter), var(--content));
+  margin-inline: auto;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--c-accent-ink);
+}
+
+.skip-link {
+  position: fixed;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  translate: 0 -200%;
+  transition: translate var(--dur) var(--ease-out);
+}
+
+.skip-link:focus-visible {
+  translate: 0 0;
+}
+
+/* Film grain overlay (static noise, no animation cost) */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Page transitions (Astro View Transitions) ---------- */
+@keyframes vt-out {
+  to {
+    opacity: 0;
+    filter: blur(12px);
+    scale: 0.97;
+  }
+}
+
+@keyframes vt-in {
+  from {
+    opacity: 0;
+    filter: blur(12px);
+    scale: 1.03;
+  }
+}
+
+/* ---------- Motion safety ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Shared UI ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.875rem;
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--c-line-strong);
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    translate var(--dur) var(--ease-out),
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
+}
+
+.btn:hover {
+  translate: 0 -2px;
+  border-color: var(--c-fg);
+}
+
+.btn svg {
+  transition: translate var(--dur) var(--ease-out);
+}
+
+.btn:hover svg:last-child {
+  translate: 2px -2px;
+}
+
+.btn-primary {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  color: var(--c-on-accent);
+  box-shadow: 0 8px 40px -12px var(--c-accent);
+}
+
+.btn-primary:hover {
+  border-color: var(--c-accent-hot);
+  background: var(--c-accent-hot);
+  box-shadow: 0 12px 50px -10px var(--c-accent);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.2em 0.7em;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.status-live {
+  color: var(--c-live);
+}
+
+.status-live::before {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.status-in-progress,
+.status-coming-soon {
+  color: var(--c-accent-ink);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+    scale: 0.7;
+  }
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.tags li {
+  padding: 0.25em 0.7em;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--c-bg-raised) 70%, transparent);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--c-muted);
+}
+
+.section-head {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 48rem;
+}
+
+.section-head h2 {
+  font-size: var(--fs-2xl);
+  letter-spacing: -0.055em;
+  line-height: 0.9;
+}
+
+.section-head p:not(.kicker) {
+  font-size: var(--fs-md);
+  color: var(--c-muted);
+  max-width: 44ch;
+}
+
+/* Scroll reveal used across sections (no-op without support or with reduced motion). */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      /* Ends within the entry phase, so elements at the very bottom of the page still finish. */
+      animation-range: entry calc(var(--d, 0) * 6%) entry calc(75% + var(--d, 0) * 10%);
+    }
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    translate: 0 3rem;
+    filter: blur(10px);
+  }
+}

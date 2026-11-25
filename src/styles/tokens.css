@@ -1,0 +1,77 @@
+/* Design tokens. Dark is the default; light is opt-in via [data-theme='light']. */
+:root {
+  color-scheme: dark;
+
+  /* Palette */
+  --c-bg: #07060a;
+  --c-bg-raised: #110e12;
+  --c-fg: #f5efe8;
+  --c-muted: #a39a91;
+  --c-faint: #5b544e;
+  --c-line: rgb(255 240 225 / 0.1);
+  --c-line-strong: rgb(255 240 225 / 0.2);
+  --c-accent: #ff7a1a;
+  --c-accent-hot: #ffb057;
+  --c-accent-deep: #ff4b12;
+  --c-accent-ink: #ff8f3d; /* accent used for text, AA on bg */
+  --c-on-accent: #120a05;
+  --c-glass: rgb(16 13 17 / 0.55);
+  --c-live: #7cf29a;
+
+  /* Type */
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-base: 1rem;
+  --fs-md: clamp(1.0625rem, 0.95rem + 0.4vw, 1.25rem);
+  --fs-lg: clamp(1.375rem, 1.1rem + 1vw, 1.875rem);
+  --fs-xl: clamp(2.25rem, 1.4rem + 3.4vw, 4.5rem);
+  --fs-2xl: clamp(3rem, 1.2rem + 7.5vw, 8.5rem);
+  --fs-hero: clamp(3.5rem, 0.8rem + 13vw, 15rem);
+
+  /* Space & shape */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+  --gutter: clamp(1.25rem, 4vw, 3rem);
+  --content: 78rem;
+  --radius-sm: 0.375rem;
+  --radius: 0.75rem;
+  --radius-lg: 1.25rem;
+  --radius-pill: 999px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 160ms;
+  --dur: 320ms;
+  --dur-slow: 900ms;
+
+  --header-h: 4rem;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --c-bg: #f6f1ea;
+  --c-bg-raised: #fffaf4;
+  --c-fg: #1a1410;
+  --c-muted: #5f554c;
+  --c-faint: #a3988d;
+  --c-line: rgb(40 20 5 / 0.12);
+  --c-line-strong: rgb(40 20 5 / 0.24);
+  --c-accent: #f26a0d;
+  --c-accent-hot: #ff9a3d;
+  --c-accent-deep: #d94a0b;
+  --c-accent-ink: #b23f00;
+  --c-on-accent: #1a0d05;
+  --c-glass: rgb(250 245 238 / 0.65);
+  --c-live: #128a3a;
+}

@@ -1,0 +1,340 @@
+---
+import { SITE } from '../config';
+import Icon from './Icon.astro';
+import Scramble from './Scramble.astro';
+
+const letters = [...'M.MaxLab'];
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-inner container">
+    <p class="kicker hero-kicker">
+      <span class="cursor" aria-hidden="true"></span>
+      <Scramble text="Mission control · Aarhus, DK" />
+    </p>
+
+    <h1 id="hero-title" class="hero-title">
+      <span class="sr-only">M.MaxLab</span>
+      <span class="word" aria-hidden="true" data-cosmos-focus>
+        {letters.map((ch, i) => (
+          <span class:list={['ch', { dot: ch === '.' }]} style={`--i: ${i}`}>
+            {ch}
+          </span>
+        ))}
+      </span>
+    </h1>
+
+    <p class="lede">
+      The launchpad for everything <strong>MartinNguyen-Max</strong> builds: apps, games and AI
+      experiments.
+    </p>
+
+    <a class="gh-pill" href={SITE.github}>
+      <Icon name="github" size={20} />
+      <span class="gh-label">
+        <span class="gh-small">GitHub</span>
+        <span class="gh-user">{SITE.githubUser}</span>
+      </span>
+      <Icon name="arrow-up-right" size={16} class="gh-arrow" />
+    </a>
+  </div>
+
+  <a class="scroll-cue mono" href="#launch">
+    <span>Scroll to launch</span>
+    <span class="cue-line" aria-hidden="true"></span>
+  </a>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding-block: calc(var(--header-h) + var(--space-8)) var(--space-24);
+    text-align: center;
+  }
+
+  .hero-inner {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: var(--space-6);
+  }
+
+  /* Soft scrim under the lede and button, so text stays readable over the corona. */
+  .hero-inner::after {
+    content: '';
+    position: absolute;
+    inset: 55% 10% -12%;
+    z-index: -1;
+    background: radial-gradient(
+      closest-side,
+      rgb(7 6 10 / 0.82),
+      rgb(7 6 10 / 0.5) 60%,
+      transparent
+    );
+    filter: blur(24px);
+    pointer-events: none;
+  }
+
+  :global([data-theme='light']) .hero-inner::after {
+    background: radial-gradient(
+      closest-side,
+      rgb(246 241 234 / 0.9),
+      rgb(246 241 234 / 0.5) 60%,
+      transparent
+    );
+  }
+
+  .hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-pill);
+    background: var(--c-glass);
+    backdrop-filter: blur(8px);
+    animation: fade-up 1s var(--ease-out) 0.1s both;
+  }
+
+  .cursor {
+    width: 0.5em;
+    height: 1em;
+    background: var(--c-accent);
+    animation: caret 1.1s steps(2, jump-none) infinite;
+  }
+
+  @keyframes caret {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .hero-title {
+    font-size: var(--fs-hero);
+    font-weight: 650;
+    letter-spacing: -0.065em;
+    line-height: 0.82;
+    padding-inline-end: 0.06em;
+    filter: drop-shadow(0 0.04em 0.12em rgb(0 0 0 / 0.55));
+  }
+
+  :global([data-theme='light']) .hero-title {
+    filter: none;
+  }
+
+  .word {
+    display: inline-flex;
+  }
+
+  .ch {
+    display: inline-block;
+    background: linear-gradient(
+      180deg,
+      var(--c-fg) 35%,
+      color-mix(in oklab, var(--c-fg) 65%, var(--c-accent))
+    );
+    background-clip: text;
+    color: transparent;
+    animation: ch-in 1.4s var(--ease-out) both;
+    animation-delay: calc(var(--i) * 70ms + 350ms);
+  }
+
+  .ch.dot {
+    background: none;
+    color: var(--c-accent);
+    text-shadow:
+      0 0 0.15em var(--c-accent),
+      0 0 0.5em color-mix(in oklab, var(--c-accent) 60%, transparent);
+    animation:
+      ch-in 1.4s var(--ease-out) both,
+      ignite 3.2s ease-in-out 2s infinite;
+    animation-delay: calc(var(--i) * 70ms + 350ms), 2s;
+  }
+
+  /* Letters hop when you hover them (transform is separate from the entrance's translate/scale). */
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .ch {
+      transition: transform 500ms var(--ease-out);
+    }
+
+    .ch:hover {
+      transform: translateY(-0.09em) rotate(-4deg);
+      transition-duration: 160ms;
+    }
+  }
+
+  @keyframes ch-in {
+    from {
+      opacity: 0;
+      translate: 0 0.4em;
+      scale: 1 1.35;
+      filter: blur(18px);
+    }
+  }
+
+  @keyframes ignite {
+    50% {
+      text-shadow:
+        0 0 0.25em var(--c-accent-hot),
+        0 0 0.9em var(--c-accent);
+    }
+  }
+
+  .lede {
+    margin-top: max(var(--space-8), 6svh);
+    max-width: 34ch;
+    font-size: var(--fs-md);
+    color: var(--c-muted);
+    animation: fade-up 1.2s var(--ease-out) 1s both;
+  }
+
+  .lede strong {
+    color: var(--c-fg);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      translate: 0 1rem;
+      filter: blur(6px);
+    }
+  }
+
+  /* GitHub pill with a rotating conic border */
+  @property --angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  .gh-pill {
+    --angle: 0deg;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-6) var(--space-3) var(--space-4);
+    border-radius: var(--radius-pill);
+    background:
+      linear-gradient(var(--c-bg-raised), var(--c-bg-raised)) padding-box,
+      conic-gradient(
+          from var(--angle),
+          var(--c-line-strong) 0deg,
+          var(--c-accent) 60deg,
+          var(--c-accent-hot) 90deg,
+          var(--c-line-strong) 150deg,
+          var(--c-line-strong) 360deg
+        )
+        border-box;
+    border: 1px solid transparent;
+    text-decoration: none;
+    text-align: start;
+    box-shadow: 0 0 40px -10px color-mix(in oklab, var(--c-accent) 50%, transparent);
+    animation:
+      fade-up 1.2s var(--ease-out) 1.2s both,
+      spin 4s linear infinite;
+    transition:
+      translate var(--dur) var(--ease-out),
+      box-shadow var(--dur) var(--ease-out);
+  }
+
+  .gh-pill:hover {
+    translate: 0 -2px;
+    box-shadow: 0 10px 50px -10px color-mix(in oklab, var(--c-accent) 70%, transparent);
+  }
+
+  @keyframes spin {
+    to {
+      --angle: 360deg;
+    }
+  }
+
+  .gh-label {
+    display: grid;
+    line-height: 1.2;
+  }
+
+  .gh-small {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--c-muted);
+  }
+
+  .gh-user {
+    font-weight: 600;
+  }
+
+  .gh-pill :global(.gh-arrow) {
+    color: var(--c-accent-ink);
+    transition: translate var(--dur) var(--ease-out);
+  }
+
+  .gh-pill:hover :global(.gh-arrow) {
+    translate: 2px -2px;
+  }
+
+  .scroll-cue {
+    position: absolute;
+    bottom: var(--space-8);
+    left: 50%;
+    translate: -50% 0;
+    display: grid;
+    justify-items: center;
+    gap: var(--space-3);
+    color: var(--c-muted);
+    text-decoration: none;
+    animation: fade-up 1s var(--ease-out) 2s both;
+  }
+
+  .cue-line {
+    width: 1px;
+    height: 3rem;
+    background: linear-gradient(var(--c-accent), transparent);
+    transform-origin: top;
+    animation: cue 2.2s var(--ease-in-out) infinite;
+  }
+
+  @keyframes cue {
+    0% {
+      scale: 1 0;
+    }
+    50% {
+      scale: 1 1;
+      transform-origin: top;
+    }
+    51% {
+      transform-origin: bottom;
+    }
+    100% {
+      scale: 1 0;
+      transform-origin: bottom;
+    }
+  }
+
+  /* Hero drifts away as you scroll into the launch sequence. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .hero-inner {
+        animation: hero-out linear both;
+        animation-timeline: view();
+        animation-range: exit 0% exit 70%;
+      }
+    }
+  }
+
+  @keyframes hero-out {
+    to {
+      opacity: 0;
+      scale: 0.86;
+      translate: 0 -8vh;
+      filter: blur(10px);
+    }
+  }
+</style>

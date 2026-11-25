@@ -1,0 +1,52 @@
+---
+/**
+ * M.MaxLab mark: an "M" inside an orbit, with the orange "." as a moon.
+ * The moon orbits when the parent link is hovered.
+ */
+interface Props {
+  size?: number;
+}
+const { size = 32 } = Astro.props;
+---
+
+<svg
+  class="logo"
+  width={size}
+  height={size}
+  viewBox="0 0 40 40"
+  aria-hidden="true"
+  focusable="false"
+>
+  <circle
+    cx="20"
+    cy="20"
+    r="16.5"
+    fill="none"
+    stroke="currentColor"
+    stroke-opacity="0.28"
+    stroke-width="1.5"
+  ></circle>
+  <path
+    d="M12 27V13.5l8 8.5 8-8.5V27"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="3.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  ></path>
+  <g class="logo-moon">
+    <circle cx="31.7" cy="8.3" r="3.4" fill="var(--c-accent)"></circle>
+  </g>
+</svg>
+
+<style>
+  .logo-moon {
+    transform-origin: 20px 20px;
+    transition: rotate 900ms var(--ease-out);
+  }
+
+  :global(a:hover) > .logo .logo-moon,
+  :global(a:focus-visible) > .logo .logo-moon {
+    rotate: 360deg;
+  }
+</style>

@@ -1,0 +1,15 @@
+---
+/** Text that "decodes" when scrolled into view. Screen readers get the plain text. */
+interface Props {
+  text: string;
+  class?: string;
+}
+const { text, class: className } = Astro.props;
+---
+
+<span class={className}>
+  <span class="sr-only">{text}</span>
+  <span aria-hidden="true" data-scramble>
+    {text}
+  </span>
+</span>

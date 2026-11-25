@@ -1,0 +1,229 @@
+---
+/**
+ * Tall, pinned section that plays like film titles while the cosmos shader
+ * falls into the black hole. Its scroll length also drives the shader ([data-launch]).
+ * Without scroll-driven animation support, the lines simply render as a list.
+ */
+// Ranges (% of the pinned scroll) are tuned to the shader timeline in cosmos/shader.ts:
+// the supernova flash lands as line 1 dissolves, and the final line plays over the shockwave.
+const lines = [
+  { text: 'I build apps, games and AI.', start: 0, end: 40 },
+  { text: 'This is where they launch.', start: 40, end: 100 },
+];
+const count = lines.length;
+---
+
+<section id="launch" class="launch" data-launch aria-label="Introduction">
+  <div class="stage">
+    <ol class="lines">
+      {lines.map((line, i) => (
+        <li
+          class:list={['line', { final: i === count - 1 }]}
+          style={`--start: ${line.start}%; --end: ${line.end}%`}
+        >
+          <span class="idx mono" aria-hidden="true">
+            {String(i + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}
+          </span>
+          {i === count - 1 ? (
+            <span class="text">{line.text}</span>
+          ) : (
+            <span class="text">
+              {line.text.split(' ').map((word, j) => (
+                <>
+                  {j > 0 && ' '}
+                  <span class="w" style={`--w: ${j}`}>
+                    {word}
+                  </span>
+                </>
+              ))}
+            </span>
+          )}
+        </li>
+      ))}
+    </ol>
+    <div class="progress" aria-hidden="true">
+      <span></span>
+    </div>
+  </div>
+</section>
+
+<style>
+  .launch {
+    position: relative;
+    padding-block: var(--space-24);
+  }
+
+  .lines {
+    display: grid;
+    gap: var(--space-16);
+    padding: 0;
+    list-style: none;
+    text-align: center;
+  }
+
+  .line {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-4);
+    padding-inline: var(--gutter);
+  }
+
+  .text {
+    max-width: 18ch;
+    font-size: var(--fs-2xl);
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    line-height: 0.95;
+    text-wrap: balance;
+    text-shadow: 0 0.05em 0.3em rgb(0 0 0 / 0.5);
+  }
+
+  :global([data-theme='light']) .text {
+    text-shadow: 0 0.05em 0.4em rgb(246 241 234 / 0.8);
+  }
+
+  .final .text {
+    background: linear-gradient(
+      100deg,
+      var(--c-fg) 20%,
+      var(--c-accent-hot) 55%,
+      var(--c-accent) 80%
+    );
+    background-clip: text;
+    color: transparent;
+  }
+
+  .idx {
+    color: var(--c-accent-ink);
+  }
+
+  .progress {
+    display: none;
+  }
+
+  /* ---------- Cinematic mode ---------- */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .launch {
+        height: 200svh;
+        padding: 0;
+        view-timeline: --launch block;
+      }
+
+      .stage {
+        position: sticky;
+        top: 0;
+        height: 100svh;
+        display: grid;
+        place-items: center;
+      }
+
+      .lines {
+        grid-template-areas: 'stack';
+        gap: 0;
+      }
+
+      .line {
+        grid-area: stack;
+        opacity: 0;
+        animation: line-cycle linear both;
+        animation-timeline: --launch;
+        animation-range: contain var(--start) contain var(--end);
+      }
+
+      /* Words land one by one, like film titles. */
+      .w {
+        display: inline-block;
+        animation: word-in linear both;
+        animation-timeline: --launch;
+        animation-range: contain calc(var(--start) + var(--w) * 1%) contain
+          calc(var(--start) + 6% + var(--w) * 1%);
+      }
+
+      .line.final {
+        animation-name: line-final;
+        animation-range: contain var(--start) exit 60%;
+      }
+
+      .progress {
+        display: block;
+        position: absolute;
+        bottom: var(--space-12);
+        left: 50%;
+        translate: -50% 0;
+        width: min(18rem, 60vw);
+        height: 2px;
+        background: var(--c-line);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+
+      .progress span {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, var(--c-accent-deep), var(--c-accent-hot));
+        transform-origin: left;
+        animation: grow linear both;
+        animation-timeline: --launch;
+        animation-range: contain 0% contain 100%;
+      }
+    }
+  }
+
+  @keyframes line-cycle {
+    0% {
+      opacity: 0;
+      translate: 0 3vh;
+    }
+    12%,
+    72% {
+      opacity: 1;
+      translate: 0 0;
+      scale: 1;
+      filter: blur(0);
+    }
+    100% {
+      opacity: 0;
+      translate: 0 -6vh;
+      scale: 1.06;
+      filter: blur(14px);
+    }
+  }
+
+  @keyframes word-in {
+    from {
+      opacity: 0;
+      translate: 0 0.5em;
+      filter: blur(12px);
+      scale: 0.9;
+    }
+  }
+
+  @keyframes line-final {
+    0% {
+      opacity: 0;
+      scale: 0.8;
+      filter: blur(20px);
+    }
+    25%,
+    70% {
+      opacity: 1;
+      scale: 1;
+      filter: blur(0);
+    }
+    100% {
+      opacity: 0;
+      scale: 1.15;
+      filter: blur(8px);
+    }
+  }
+
+  @keyframes grow {
+    from {
+      scale: 0 1;
+    }
+    to {
+      scale: 1 1;
+    }
+  }
+</style>

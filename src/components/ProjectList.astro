@@ -1,0 +1,248 @@
+---
+import { getCollection } from 'astro:content';
+import { Image } from 'astro:assets';
+import { STATUS_LABELS, displayHost, sortProjects } from '../lib/projects';
+import Icon from './Icon.astro';
+
+const projects = sortProjects(await getCollection('projects'));
+const live = projects.filter((p) => p.data.status === 'live');
+const lab = projects.filter((p) => p.data.status !== 'live');
+const liveCount = live.length;
+---
+
+<section id="projects" class="projects container" aria-labelledby="projects-title">
+  <header class="section-head reveal">
+    <p class="kicker">
+      02 — Overview · {liveCount} live · {projects.length - liveCount} in the lab
+    </p>
+    <h2 id="projects-title">All projects</h2>
+  </header>
+
+  <ul class="grid">
+    {live.map((project, i) => {
+      const { name, tagline, status, url, repo, image, imageAlt, tech } = project.data;
+      const isLive = status === 'live' && url;
+      return (
+        <li class:list={['item reveal', { live: isLive }]} style={`--d: ${(i % 3) * 0.4}`}>
+          {isLive && image ? (
+            <a class="thumb" href={url} tabindex="-1" aria-hidden="true">
+              <Image
+                src={image}
+                alt={imageAlt ?? ''}
+                widths={[640, 960, 1280, 1920]}
+                sizes="(min-width: 80rem) 38rem, (min-width: 48rem) 46vw, 92vw"
+                loading="lazy"
+              />
+            </a>
+          ) : (
+            <span class="thumb lab-thumb" aria-hidden="true">
+              <span class="mono">In the lab</span>
+            </span>
+          )}
+          <div class="body">
+            <p class="meta">
+              <span class={`status status-${status}`}>{STATUS_LABELS[status]}</span>
+              {url && <span class="mono host">{displayHost(url)}</span>}
+            </p>
+            <h3>
+              {isLive ? (
+                <a class="title-link" href={url}>
+                  {name}
+                  <Icon name="arrow-up-right" size={16} />
+                </a>
+              ) : (
+                name
+              )}
+            </h3>
+            <p class="tagline">{tagline}</p>
+            {tech.length > 0 && <p class="tech mono">{tech.slice(0, 4).join(' · ')}</p>}
+            {repo && (
+              <a class="repo" href={repo}>
+                <Icon name="github" size={14} />
+                Source<span class="sr-only"> code for {name}</span>
+              </a>
+            )}
+          </div>
+        </li>
+      );
+    })}
+  </ul>
+
+  {lab.length > 0 && (
+    <ul class="lab" aria-label="In the lab">
+      {lab.map((project, i) => (
+        <li class="lab-item reveal" style={`--d: ${i * 0.3}`}>
+          <span class={`status status-${project.data.status}`}>
+            {STATUS_LABELS[project.data.status]}
+          </span>
+          <h3>{project.data.name}</h3>
+          <p class="tagline">{project.data.tagline}</p>
+        </li>
+      ))}
+    </ul>
+  )}
+</section>
+
+<style>
+  .projects {
+    display: grid;
+    gap: var(--space-8);
+    padding-block: var(--space-24) var(--space-12);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+    gap: var(--space-4);
+    padding: 0;
+    list-style: none;
+  }
+
+  .item {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+    border: 1px solid var(--c-line);
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--c-bg-raised) 80%, transparent);
+    backdrop-filter: blur(12px);
+    transition:
+      border-color var(--dur) var(--ease-out),
+      translate var(--dur) var(--ease-out);
+  }
+
+  .item:hover {
+    border-color: var(--c-line-strong);
+    translate: 0 -3px;
+  }
+
+  .thumb {
+    display: block;
+    aspect-ratio: 16 / 7;
+    overflow: hidden;
+    border-bottom: 1px solid var(--c-line);
+  }
+
+  .thumb :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
+    transition: scale 700ms var(--ease-out);
+  }
+
+  .item:hover .thumb :global(img) {
+    scale: 1.04;
+  }
+
+  .lab {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: var(--space-4);
+    padding: 0;
+    list-style: none;
+  }
+
+  .lab-item {
+    display: grid;
+    gap: var(--space-2);
+    align-content: start;
+    justify-items: start;
+    padding: var(--space-4) var(--space-6) var(--space-6);
+    border: 1px dashed var(--c-line-strong);
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--c-bg-raised) 55%, transparent);
+    backdrop-filter: blur(10px);
+  }
+
+  .lab-item h3 {
+    font-size: var(--fs-md);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .lab-item .tagline {
+    font-size: var(--fs-sm);
+  }
+
+  .lab-thumb {
+    display: grid;
+    place-items: center;
+    color: var(--c-muted);
+    background:
+      repeating-linear-gradient(
+        -45deg,
+        transparent 0 10px,
+        color-mix(in oklab, var(--c-accent) 8%, transparent) 10px 20px
+      ),
+      color-mix(in oklab, var(--c-bg-raised) 60%, transparent);
+  }
+
+  .body {
+    display: grid;
+    gap: var(--space-2);
+    align-content: start;
+    padding: var(--space-4) var(--space-6) var(--space-6);
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .host {
+    color: var(--c-muted);
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+
+  h3 {
+    font-size: var(--fs-lg);
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .title-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* The whole card is clickable via the title link. */
+  .title-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  .title-link :global(svg) {
+    color: var(--c-accent-ink);
+  }
+
+  .tagline {
+    color: var(--c-muted);
+  }
+
+  .tech {
+    color: var(--c-muted);
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+
+  .repo {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    justify-self: start;
+    margin-top: var(--space-1);
+    font-size: var(--fs-sm);
+    color: var(--c-fg);
+  }
+</style>

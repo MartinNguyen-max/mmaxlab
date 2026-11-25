@@ -1,0 +1,83 @@
+---
+import '../styles/global.css';
+import Analytics from '@vercel/analytics/astro';
+import { Font } from 'astro:assets';
+import { ClientRouter } from 'astro:transitions';
+import Cosmos from '../components/Cosmos.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import Seo from '../components/Seo.astro';
+import Telemetry from '../components/Telemetry.astro';
+
+interface Props {
+  title?: string | undefined;
+  description?: string | undefined;
+  noindex?: boolean | undefined;
+}
+
+const { title, description, noindex } = Astro.props;
+
+const easeOut = 'cubic-bezier(0.16, 1, 0.3, 1)';
+const easeInOut = 'cubic-bezier(0.65, 0, 0.35, 1)';
+const cinematic = {
+  forwards: {
+    old: { name: 'vt-out', duration: '0.4s', easing: easeInOut, fillMode: 'both' },
+    new: { name: 'vt-in', duration: '0.7s', delay: '0.1s', easing: easeOut, fillMode: 'both' },
+  },
+  backwards: {
+    old: { name: 'vt-out', duration: '0.4s', easing: easeInOut, fillMode: 'both' },
+    new: { name: 'vt-in', duration: '0.7s', delay: '0.1s', easing: easeOut, fillMode: 'both' },
+  },
+};
+---
+
+<!doctype html>
+<html lang="en" transition:animate="none">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f1ea" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <Seo title={title} description={description} noindex={noindex} />
+    <Font cssVariable="--font-geist-sans" preload />
+    <Font cssVariable="--font-geist-mono" />
+    <script is:inline>
+      (() => {
+        const apply = () => {
+          // Light is the default; dark is opt-in and remembered.
+          if (localStorage.getItem('theme') === 'dark') {
+            delete document.documentElement.dataset.theme;
+          } else {
+            document.documentElement.dataset.theme = 'light';
+          }
+        };
+        apply();
+        if (!window.__mmaxTheme) {
+          window.__mmaxTheme = true;
+          document.addEventListener('astro:after-swap', apply);
+        }
+      })();
+    </script>
+    <ClientRouter />
+    <Analytics />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">
+      Skip to content
+    </a>
+    <Cosmos />
+    <div class="grain" aria-hidden="true"></div>
+    <Header />
+    <main id="main" transition:animate={cinematic}>
+      <slot />
+    </main>
+    <Footer />
+    <Telemetry />
+    <script>
+      import '../scripts/interactions';
+    </script>
+  </body>
+</html>
