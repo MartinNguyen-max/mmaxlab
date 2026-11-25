@@ -8,12 +8,12 @@
 
 ## Highlights
 
-- **Cinematic scroll.** A hand-written WebGL2 shader (no libraries) renders a black hole with a flowing corona and accretion disk. As you scroll, the camera falls through the event horizon into warp-speed stars, the hole goes supernova, and you land on a small green planet.
+- **Cinematic scroll.** A hand-written WebGL2 shader (no libraries) renders a black hole with a flowing corona and accretion disk; a meteor smashes it to pieces as you scroll. As you scroll, the camera falls through the event horizon into warp-speed stars, the hole goes supernova, and you land on a small green planet.
 - **Zero-JS by default.** Static HTML from Astro 7. Scroll choreography uses native CSS scroll-driven animations (`animation-timeline: view()`), and the only client JS is the shader and small enhancements.
-- **Accessible.** Semantic HTML, WCAG 2.2 AA verified with axe in CI (dark and light themes), full `prefers-reduced-motion` support, and content that never depends on animation.
+- **Accessible.** Semantic HTML, WCAG 2.2 AA verified with axe in CI (desktop, Android and iPhone/WebKit), full `prefers-reduced-motion` support, and content that never depends on animation.
 - **One file per project.** Add a Markdown file and the hub updates. A Zod schema validates it at build time.
-- **Drive the portfolio.** A low-poly planet with a rover (three.js, loaded only when you get there). Each live project has a screen; drive up and click to fly into it. WASD/arrows on desktop, tap-to-drive on phones, and a plain project list for everyone.
-- **Astro View Transitions.** The WebGL canvas persists between pages, and a circular reveal switches the theme.
+- **Drive the portfolio.** A low-poly planet with a rover (three.js, loaded only when you get there). Press Start to play fullscreen: drive up to a project's screen and open it in a new tab. WASD/arrows and drag-to-look on desktop, a joystick on phones, and a plain project list for everyone.
+- **Astro View Transitions.** The WebGL canvas persists between pages.
 
 ## Tech stack
 

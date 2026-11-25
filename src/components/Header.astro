@@ -2,7 +2,6 @@
 import { SITE } from '../config';
 import Icon from './Icon.astro';
 import Logo from './Logo.astro';
-import ThemeToggle from './ThemeToggle.astro';
 
 const path = Astro.url.pathname;
 const links = [
@@ -33,9 +32,6 @@ const links = [
           <a class="icon-link" href={SITE.github} aria-label="GitHub profile">
             <Icon name="github" size={18} />
           </a>
-        </li>
-        <li>
-          <ThemeToggle />
         </li>
       </ul>
     </nav>

@@ -78,15 +78,6 @@ const letters = [...'M.MaxLab'];
     pointer-events: none;
   }
 
-  :global([data-theme='light']) .hero-inner::after {
-    background: radial-gradient(
-      closest-side,
-      rgb(246 241 234 / 0.9),
-      rgb(246 241 234 / 0.5) 60%,
-      transparent
-    );
-  }
-
   .hero-kicker {
     display: inline-flex;
     align-items: center;
@@ -119,10 +110,6 @@ const letters = [...'M.MaxLab'];
     line-height: 0.82;
     padding-inline-end: 0.06em;
     filter: drop-shadow(0 0.04em 0.12em rgb(0 0 0 / 0.55));
-  }
-
-  :global([data-theme='light']) .hero-title {
-    filter: none;
   }
 
   .word {
@@ -205,15 +192,8 @@ const letters = [...'M.MaxLab'];
     }
   }
 
-  /* GitHub pill with a rotating conic border */
-  @property --angle {
-    syntax: '<angle>';
-    initial-value: 0deg;
-    inherits: false;
-  }
-
+  /* GitHub pill with a soft, static gradient border */
   .gh-pill {
-    --angle: 0deg;
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -222,22 +202,13 @@ const letters = [...'M.MaxLab'];
     border-radius: var(--radius-pill);
     background:
       linear-gradient(var(--c-bg-raised), var(--c-bg-raised)) padding-box,
-      conic-gradient(
-          from var(--angle),
-          var(--c-line-strong) 0deg,
-          var(--c-accent) 60deg,
-          var(--c-accent-hot) 90deg,
-          var(--c-line-strong) 150deg,
-          var(--c-line-strong) 360deg
-        )
+      linear-gradient(120deg, var(--c-accent-hot), var(--c-accent) 40%, var(--c-line-strong) 75%)
         border-box;
     border: 1px solid transparent;
     text-decoration: none;
     text-align: start;
     box-shadow: 0 0 40px -10px color-mix(in oklab, var(--c-accent) 50%, transparent);
-    animation:
-      fade-up 1.2s var(--ease-out) 1.2s both,
-      spin 4s linear infinite;
+    animation: fade-up 1.2s var(--ease-out) 1.2s both;
     transition:
       translate var(--dur) var(--ease-out),
       box-shadow var(--dur) var(--ease-out);
@@ -246,12 +217,6 @@ const letters = [...'M.MaxLab'];
   .gh-pill:hover {
     translate: 0 -2px;
     box-shadow: 0 10px 50px -10px color-mix(in oklab, var(--c-accent) 70%, transparent);
-  }
-
-  @keyframes spin {
-    to {
-      --angle: 360deg;
-    }
   }
 
   .gh-label {
@@ -321,11 +286,32 @@ const letters = [...'M.MaxLab'];
   /* Hero drifts away as you scroll into the launch sequence. */
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
+      .hero {
+        view-timeline: --hero block;
+      }
+
       .hero-inner {
         animation: hero-out linear both;
         animation-timeline: view();
         animation-range: exit 0% exit 70%;
       }
+
+      /* The cue has done its job as soon as you scroll. */
+      .scroll-cue {
+        animation:
+          fade-up 1s var(--ease-out) 2s both,
+          cue-out linear both;
+        animation-timeline: auto, --hero;
+        animation-range:
+          normal,
+          exit 0% exit 18%;
+      }
+    }
+  }
+
+  @keyframes cue-out {
+    to {
+      opacity: 0;
     }
   }
 

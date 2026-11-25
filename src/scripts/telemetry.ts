@@ -3,12 +3,12 @@ import type { CosmosState } from './cosmos/cosmos';
 /** Mission phase for a given launch progress (matches the shader timeline). */
 export function phaseFor(launch: number, singularity: number): string {
   if (singularity < 0.5) return 'Cruise';
-  if (launch < 0.04) return 'Standby';
-  if (launch < 0.24) return 'Ignition';
-  if (launch < 0.62) return 'Approach';
-  if (launch < 0.705) return 'Event horizon';
-  if (launch < 0.84) return 'Supernova';
-  if (launch < 0.95) return 'Warp';
+  if (launch < 0.02) return 'Standby';
+  if (launch < 0.3) return 'Approach';
+  if (launch < 0.36) return 'Impact';
+  if (launch < 0.62) return 'Supernova';
+  if (launch < 0.82) return 'Warp';
+  if (launch < 0.99) return 'Landing';
   return 'Cruise';
 }
 

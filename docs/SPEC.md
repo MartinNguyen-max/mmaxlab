@@ -53,12 +53,11 @@ order: 1
 
 ## Design
 
-- Dark by default, optional light toggle (remembered).
+- Dark only.
 - Warm orange accent, terminal/monospace details, subtle grid. Geist Sans + Geist Mono, self-hosted.
 - Custom SVG logo + favicon.
-- **Theme:** light by default, dark optional.
-- **Planet game:** a small green low-poly planet (three.js, lazy-loaded) with a rover. One screen per live project; driving up shows its intro, clicking flies the camera into the screen and opens the site in a new tab. Keyboard (WASD/arrows, Enter, Esc) and tap-to-drive on touch. The overview list carries the same content for everyone who skips the game.
-- **Motion:** WebGL2 "singularity" (black hole → supernova → multicoloured far side) driven by scroll, persisted across pages. Native CSS scroll-driven reveals and a pinned film-title sequence. Astro View Transitions between pages. Full `prefers-reduced-motion` support.
+- **Planet game:** a small green low-poly planet (three.js, lazy-loaded) with a rover. Loads only when you press Start, then plays fullscreen (✕ to leave). One screen per live project; driving up to or tapping a screen shows a small card whose Open link opens the site in a new tab. Keyboard (WASD/arrows, Enter, Esc), joystick on touch, drag to look around. The overview list carries the same content for everyone who skips the game.
+- **Motion:** WebGL2 background driven by scroll from the first pixel (stars stream from the first scroll → a meteor smashes the black hole into pieces → colour explosion → forward flight past planets → green landing planet), persisted across pages. Native CSS scroll-driven reveals and a pinned film-title sequence. Astro View Transitions between pages. Full `prefers-reduced-motion` support.
 - Performance budget: Lighthouse ≥ 95 in all categories on mobile.
 
 ## SEO & sharing

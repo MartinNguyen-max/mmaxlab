@@ -1,4 +1,4 @@
-/* Design tokens. Dark is the default; light is opt-in via [data-theme='light']. */
+/* Design tokens. The site is dark only. */
 :root {
   color-scheme: dark;
 
@@ -56,22 +56,4 @@
   --dur-slow: 900ms;
 
   --header-h: 4rem;
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
-  --c-bg: #f6f1ea;
-  --c-bg-raised: #fffaf4;
-  --c-fg: #1a1410;
-  --c-muted: #5f554c;
-  --c-faint: #a3988d;
-  --c-line: rgb(40 20 5 / 0.12);
-  --c-line-strong: rgb(40 20 5 / 0.24);
-  --c-accent: #f26a0d;
-  --c-accent-hot: #ff9a3d;
-  --c-accent-deep: #d94a0b;
-  --c-accent-ink: #b23f00;
-  --c-on-accent: #1a0d05;
-  --c-glass: rgb(250 245 238 / 0.65);
-  --c-live: #128a3a;
 }

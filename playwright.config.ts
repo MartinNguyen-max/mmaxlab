@@ -19,6 +19,8 @@ export default defineConfig({
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
     { name: 'mobile', use: { ...devices['Pixel 7'] } },
+    // Safari on iPhone (WebKit), the phone Martin tests on.
+    { name: 'iphone', use: { ...devices['iPhone 15'] } },
   ],
   webServer: {
     command: `pnpm build && pnpm preview --port ${PORT}`,

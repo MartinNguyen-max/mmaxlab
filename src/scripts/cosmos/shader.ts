@@ -1,14 +1,16 @@
 /**
  * Full-screen WebGL2 shader: "the singularity".
  *
- * Scene timeline (driven by `uLaunch`, 0 → 1 while scrolling the hero + launch section):
- *   0.00–0.30  a black hole with a flowing orange corona and a tilted accretion disk
- *   0.18–0.70  the camera falls into it; matter spirals into the horizon
- *   ~0.70      the hole goes supernova: a flash and a chromatic shockwave
- *   0.70–0.85  the shockwave sweeps outwards and reveals a new, multicoloured universe
- *   0.45–1.00  warp-speed star streaks that settle into a calm drift
- * After the launch, `uAfter` (viewports scrolled past it) floats planets past with parallax,
- * and `uDrift` (whole-page progress) raises a planet horizon at the very end of the page.
+ * Scene timeline (driven by `uLaunch`, 0 → 1 while scrolling the hero + launch section).
+ * Everything follows the scroll position, so scrolling slowly plays it in slow motion:
+ *   0.00–0.30  stars stream past from the first pixel; matter spirals into the restless black hole
+ *   0.05–0.30  a meteor streaks in from the top right, speeding up
+ *   0.30       impact: camera shake, a warm flare, the hole cracks into glowing pieces
+ *   0.32–0.80  the pieces fly towards the camera while colour gas, a shockwave and debris reveal the far side
+ *   0.80–1.00  a green planet rises from below: the landing zone (the game section fades in on it)
+ * The camera rolls and flies forward towards a wandering vanishing point; after the launch, `uAfter`
+ * (viewports scrolled past it) keeps that flight going and brings planets past on either side.
+ * `uDrift` (whole-page progress) raises a planet horizon at the very end of the page.
  */
 
 export const VERTEX_SHADER = /* glsl */ `#version 300 es
@@ -26,7 +28,6 @@ uniform float uTime;
 uniform float uLaunch;
 uniform float uDrift;
 uniform vec2 uMouse;
-uniform float uLight;
 uniform float uSingularity;
 uniform vec2 uFocus; // where the hole sits at rest (uv units), measured from the page title
 uniform float uBoost; // 0..1 from scroll velocity
@@ -211,6 +212,94 @@ vec4 rings(vec2 uv, vec2 c, float r, out float front) {
   return vec4(tint * light, band * gap * stripes * 0.75);
 }
 
+// ---------- the shattering ----------
+// The black hole breaks into ~30 jagged pieces. The cells come from 3 rings of sectors, but the ring
+// boundaries wobble and the cuts curve, with each boundary shared by its neighbours so the pieces
+// still fit together like a cracked rock. Each piece flies outwards, spins and grows as it comes
+// towards the camera. For every pixel we undo each nearby piece's motion and test whether the
+// point lands inside that piece's original cell.
+
+// Radius of ring boundary k (0..3) in direction dir: wobbly, but the same for both neighbours.
+float ringEdge(int k, vec2 dir, float R0) {
+  float fk = float(k);
+  if (k == 0) return -1.0;
+  float wob = (noise(dir * 1.8 + fk * 7.3) - 0.5) * (k == 3 ? 0.08 : 0.22);
+  return R0 * (fk / 3.0 + wob);
+}
+
+// Angle of the cut between sectors j-1 and j of ring k, curving with the radius.
+float cutAngle(float fk, float fj, float fn, float span, float jit, float r, float R0) {
+  // The curve uses the wrapped index, so the last cut of a ring meets the first one exactly.
+  return (fj + jit) * span + sin(r / R0 * 5.0 + mod(fj, fn) * 1.7 + fk) * span * 0.2;
+}
+
+vec3 shards(vec2 p, vec2 c0, float R0, float e, out float cover) {
+  cover = 0.0;
+  vec3 col = vec3(0.0);
+  float heat = 1.0 - smoothstep(0.0, 0.5, e);
+  for (int k = 0; k < 3; k++) {
+    float fk = float(k);
+    int n = 4 + k * 5;
+    float fn = float(n);
+    float span = TAU / fn;
+    float jit = hash12(vec2(fk, 7.0));
+    for (int j = 0; j < 14; j++) {
+      if (j >= n) break;
+      float fj = float(j);
+      vec2 id = vec2(fk, fj);
+      float h = hash12(id * 1.7 + 3.1);
+      float h2 = hash12(id * 2.3 + 9.4);
+      float amid = (fj + jit + 0.5) * span;
+      float rmid = k == 0 ? R0 * 0.18 : R0 * (fk + 0.5) / 3.0;
+      vec2 cdir = vec2(cos(amid), sin(amid));
+      float fly = e * (0.5 + h * 1.6) * (0.7 + fk * 0.35);
+      float grow = 1.0 + e * e * (1.0 + h2 * 3.0);
+      float spin = e * (h - 0.5) * 7.0;
+      vec2 home = c0 + cdir * rmid;
+      vec2 now = c0 + cdir * (rmid + fly) + vec2(0.0, -e * e * 0.15 * h2);
+      float size = max(R0 / 3.0, rmid * span) * grow * 1.6;
+      vec2 d = p - now;
+      if (dot(d, d) > size * size) continue;
+
+      // Back to where this point was before the explosion.
+      vec2 q = rot(-spin) * d / grow + home;
+      vec2 dq = q - c0;
+      float r = length(dq);
+      vec2 qdir = dq / max(r, 1e-5);
+      float rin = ringEdge(k, qdir, R0);
+      float rout = ringEdge(k + 1, qdir, R0);
+      if (r < rin || r > rout) continue;
+      float ang = atan(dq.y, dq.x);
+      float cutA = cutAngle(fk, fj, fn, span, jit, r, R0);
+      float cutB = cutAngle(fk, fj + 1.0, fn, span, jit, r, R0);
+      float rel = mod(ang - cutA, TAU);
+      float width = cutB - cutA;
+      if (rel > width) continue;
+
+      // Distance to the nearest crack, in screen units.
+      float edge = min(rout - r, min(rel, width - rel) * r);
+      if (k > 0) edge = min(edge, r - rin);
+      edge *= grow;
+
+      // Dark, faceted rock lit from the top left; molten light only in the thin cracks.
+      vec2 local = (q - home) / (R0 * 0.35);
+      float facet = noise(q * 26.0 + id * 3.0);
+      float light = clamp(0.5 + dot(local, vec2(-0.6, 0.7)) * 0.6 + (facet - 0.5) * 0.7, 0.05, 1.2);
+      float grain = noise(q * 90.0);
+      vec3 c = vec3(0.05, 0.042, 0.05) * (0.35 + light) * (0.8 + grain * 0.4);
+      c += vec3(0.07, 0.06, 0.09) * pow(light, 3.0);
+      float crack = exp(-edge / (R0 * 0.010)) * (0.15 + heat * 1.9);
+      float ember = exp(-edge / (R0 * 0.045)) * heat * 0.35;
+      c += mix(vec3(1.0, 0.3, 0.04), vec3(1.0, 0.78, 0.45), heat) * (crack + ember);
+      // Cooled pieces catch a little colour from the explosion behind them.
+      c += spectrum(h * 3.0 + 0.6) * 0.08 * (1.0 - heat) * light;
+      col = c;
+      cover = 1.0 - smoothstep(0.8, 1.0, e);
+    }
+  }
+  return col;
+}
+
 // ---------- the singularity ----------
 vec3 singularity(vec2 p, float R, float t, out float occlusion) {
   float d = length(p);
@@ -262,80 +351,93 @@ vec3 singularity(vec2 p, float R, float t, out float occlusion) {
 }
 
 void main() {
-  vec2 uv = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
+  vec2 uv0 = (gl_FragCoord.xy - 0.5 * uRes) / uRes.y;
   float t = uTime;
   float s = clamp(uLaunch, 0.0, 1.0);
-
-  // Phases
-  float zoom = smoothstep(0.24, 0.74, s);
-  float warp = smoothstep(0.42, 0.7, s) * (1.0 - smoothstep(0.78, 1.0, s) * 0.92);
-  float singFade = (1.0 - smoothstep(0.64, 0.76, s)) * uSingularity;
-  float flash = exp(-pow((s - 0.705) / 0.028, 2.0)) * 0.6 * uSingularity;
-  float infallAmt = smoothstep(0.16, 0.4, s) * (1.0 - smoothstep(0.6, 0.7, s)) * uSingularity;
-
-  // Supernova shockwave: an expanding, slightly ragged ring. Inside it lies the new universe.
-  float rl = length(uv);
-  vec2 udir = uv / max(rl, 1e-4);
-  float ringR = max(0.0, s - 0.695) * 7.0;
-  float rr = rl + (noise(udir * 5.0 + t * 0.3) - 0.5) * 0.08 * min(ringR, 1.0);
-  float reveal = mix(1.0, 1.0 - smoothstep(ringR - 0.3, ringR, rr), uSingularity);
-
-  // Fast scrolling after the launch (or on other pages) kicks the ship back into warp.
-  float cruising = max(smoothstep(0.8, 0.98, s), 1.0 - uSingularity);
-  warp = max(warp, uBoost * 0.75 * cruising);
-
-  vec2 mouse = uMouse * (1.0 - zoom);
-  vec2 drift = vec2(0.0, uDrift * 0.9);
-
-  // Hole geometry (also needed for lensing the background).
-  // On portrait screens, size the hole by width so it frames the title instead of swallowing it.
+  float sing = uSingularity;
   float aspect = uRes.x / uRes.y;
-  float R = min(0.155, 0.26 * aspect) * exp(zoom * zoom * 6.2);
-  vec2 c = uFocus * (1.0 - zoom) + mouse * vec2(0.035, 0.025);
 
-  // Gravitational lensing: the background is sampled closer to the hole than it really is,
-  // so stars and nebula smear into arcs around the horizon (an Einstein ring).
+  // ---------- timeline (all scroll-driven; scrolling slowly plays it in slow motion) ----------
+  const float IMPACT = 0.3;
+  float travel = smoothstep(0.0, 0.3, s);
+  float unstable = smoothstep(0.06, 0.3, s);
+  float hit = smoothstep(IMPACT - 0.004, IMPACT + 0.004, s) * sing;
+  float shatter = smoothstep(IMPACT + 0.02, 0.8, s);
+  float blast = smoothstep(IMPACT + 0.01, 0.62, s);
+  float settle = smoothstep(0.82, 1.0, s);
+  float singFade = (1.0 - hit) * sing;
+  float infallAmt = smoothstep(0.02, 0.2, s) * (1.0 - hit) * sing;
+
+  // ---------- camera: impact shake, roll, and flying forward towards a wandering vanishing point ----
+  float shakeAmt = exp(-pow((s - IMPACT - 0.012) / 0.022, 2.0)) * sing;
+  vec2 shake = vec2(sin(t * 71.0), cos(t * 59.0)) * 0.014 * shakeAmt;
+  float afterIn = smoothstep(0.0, 0.6, uAfter);
+  float roll = sin(s * 5.0) * 0.11 * blast * sing + sin(uAfter * 1.1 + 0.6) * 0.07 * afterIn;
+  vec2 uv = rot(roll) * (uv0 + shake);
+  float depth = s * 1.4 * sing + uAfter * 0.55;
+  float steer = max(smoothstep(0.3, 0.7, s) * sing, 1.0 - sing);
+  vec2 vp = vec2(sin(depth * 1.3) * 0.18, sin(depth * 0.9 + 1.0) * 0.08) * steer;
+
+  // Hole geometry: it slides from the title to the middle of the screen as you start scrolling.
+  vec2 mouse = uMouse * (1.0 - travel);
+  float R = min(0.155, 0.26 * aspect) * (1.0 + 0.45 * unstable);
+  vec2 c = uFocus * (1.0 - smoothstep(0.0, 0.3, s)) + mouse * vec2(0.035, 0.025);
+
+  // Gravitational lensing around the hole.
   vec2 pc = uv - c;
   float pl = max(length(pc), 1e-4);
   float lens = (R * R * 1.15) / max(pl, R * 0.6) * singFade;
   vec2 luv = uv - (pc / pl) * lens;
 
+  // Shockwave from the explosion; inside it lies the far side.
+  float rl = length(pc);
+  vec2 udir = pc / max(rl, 1e-4);
+  float ringR = smoothstep(IMPACT + 0.01, 0.86, s) * 2.6;
+  float rr = rl + (noise(udir * 4.0 + t * 0.2) - 0.5) * 0.12 * min(ringR, 1.0);
+  float reveal = mix(1.0, 1.0 - smoothstep(ringR - 0.45, ringR, rr), sing);
+
+  // Stars stream past from the first pixel; strongest through the explosion; a gentle cruise after.
+  float warp = (0.18 + 0.32 * travel + 0.25 * blast) * (1.0 - settle * 0.82) * smoothstep(0.0, 0.03, s) * sing;
+  warp = max(warp, uBoost * 0.75 * max(settle, 1.0 - sing));
+
+  // Everything ahead expands as we fly forward into it (each layer at its own depth).
+  vec2 fwd = luv - vp;
+
   // Background: nebula. Home side is ember orange; the far side is violet, teal and magenta.
-  vec2 np = luv * 1.1 + drift * 0.6 + uMouse * 0.02;
+  vec2 np = fwd * exp(-depth * 0.35) * 1.1 + vec2(0.0, uDrift * 0.3) + uMouse * 0.02;
   float nb = fbm(np * 1.4 + vec2(t * 0.008, 0.0));
   float nb2 = fbm(np * 2.8 - nb * 1.5 + vec2(0.0, t * 0.012));
   vec3 nebula = mix(vec3(0.06, 0.012, 0.03), vec3(0.5, 0.14, 0.03), nb2);
-  nebula *= smoothstep(0.3, 0.95, nb) * 0.42;
+  nebula *= smoothstep(0.3, 0.95, nb) * (0.42 + 0.25 * unstable * sing);
   float ember = pow(max(0.0, 1.0 - length(uv - vec2(0.0, -0.9)) * 0.75), 3.0);
   nebula += vec3(0.35, 0.08, 0.01) * ember * 0.5;
   if (reveal > 0.001) {
-    float hueShift = uAfter * 0.08;
+    float hueShift = uAfter * 0.08 + s * 0.3;
     vec3 far = mix(vec3(0.2, 0.05, 0.42), vec3(0.02, 0.36, 0.44),
                    smoothstep(0.3, 0.7, nb2 + sin(hueShift * TAU) * 0.15));
     far = mix(far, vec3(0.6, 0.06, 0.32),
               smoothstep(0.55, 0.85, nb + cos(hueShift * TAU) * 0.1) * 0.75);
-    far *= smoothstep(0.25, 0.95, nb) * 0.55;
+    far *= smoothstep(0.25, 0.95, nb) * 0.6;
     far += vec3(0.32, 0.09, 0.02) * ember * 0.35;
     nebula = mix(nebula, far, reveal);
   }
 
-  // Stars with parallax
   vec3 stars = vec3(0.0);
-  stars += starLayer(luv + drift * 0.15 + mouse * 0.01, 22.0, 1.0, t) * 0.9;
-  stars += starLayer(luv + drift * 0.3 + mouse * 0.02, 38.0, 2.0, t) * 0.65;
-  stars += starLayer(luv + drift * 0.55 + mouse * 0.035, 70.0, 3.0, t) * 0.45;
-  stars *= 1.0 - warp * 0.7;
+  stars += starLayer(fwd * exp(-depth * 0.25) + mouse * 0.01, 22.0, 1.0, t) * 0.9;
+  stars += starLayer(fwd * exp(-depth * 0.45) + mouse * 0.02, 38.0, 2.0, t) * 0.65;
+  stars += starLayer(fwd * exp(-depth * 0.7) + mouse * 0.035, 70.0, 3.0, t) * 0.45;
+  stars *= 1.0 - warp * 0.6;
   vec3 streaks = vec3(0.0);
   if (warp > 0.002) {
-    streaks = warpStreaks(uv + mouse * 0.02, t, warp, reveal) * (0.25 + warp * 1.6);
+    streaks = warpStreaks(uv - vp + mouse * 0.02, t, warp, max(reveal, blast * sing)) * (0.25 + warp * 1.4);
   }
 
   vec3 col = nebula + stars + streaks;
   if (reveal > 0.001) {
-    col += galaxies(luv + vec2(0.0, uAfter * 0.12) + uMouse * 0.015, t) * reveal;
+    col += galaxies(fwd * exp(-depth * 0.3) + uMouse * 0.015, t) * reveal;
   }
 
-  // ---------- the far side: planets drifting past ----------
+  // ---------- the far side: planets we fly past ----------
   if (reveal > 0.001) {
     float edge = 0.5 * aspect;
     float sc = clamp(aspect / 1.4, 0.55, 1.0);
@@ -343,104 +445,157 @@ void main() {
     float cover;
     vec3 pcol;
 
-    // Horizon of a huge planet that rises at the end of the page, with a sunrise on its limb.
+    // The landing zone: a green, Earth-like planet rising from below at the end of the launch.
+    float landing = settle * (1.0 - smoothstep(1.0, 1.6, uAfter)) * sing;
+    if (landing > 0.001) {
+      float RG = 1.05 * max(1.0, sc);
+      vec2 cG = vec2(0.0, mix(-2.5, -1.4, settle) + uAfter * 0.6) + par * 0.5;
+      pcol = planet(uv, cG, RG, normalize(vec3(-0.3, 0.8, 0.5)), vec3(0.1, 0.42, 0.18),
+                    vec3(0.45, 0.78, 0.32), vec3(0.45, 0.75, 1.0), 4.0, 5.0, t, cover);
+      col = col * (1.0 - cover * landing) + pcol * landing;
+    }
+
+    // Horizon of a huge planet that rises at the very end of the page, with a sunrise on its limb.
     float RD = 2.2;
     float rise = smoothstep(0.78, 1.0, uDrift);
     vec2 cD = vec2(0.0, mix(-3.4, -2.4, rise)) + par * 0.5;
     if (rise > 0.0) {
-      pcol = planet(uv, cD, RD, normalize(vec3(0.0, 0.35, -1.0)), vec3(0.015, 0.02, 0.05),
+      pcol = planet(uv0, cD, RD, normalize(vec3(0.0, 0.35, -1.0)), vec3(0.015, 0.02, 0.05),
                     vec3(0.08, 0.1, 0.2), vec3(0.4, 0.55, 1.0), 9.0, 4.0, t, cover);
       col = col * (1.0 - cover * reveal) + pcol * reveal;
       vec2 sun = vec2(0.0, cD.y + RD);
-      vec2 sd = uv - sun;
+      vec2 sd = uv0 - sun;
       float sunGlow = exp(-length(sd * vec2(0.5, 1.0)) * 9.0) * 0.9
                     + exp(-abs(sd.y) * 90.0) * exp(-abs(sd.x) * 2.5) * 0.45;
       col += vec3(1.0, 0.6, 0.25) * sunGlow * reveal * smoothstep(-0.5, -0.2, sun.y);
     }
 
-    // Violet gas giant with rings (left).
-    float RB = 0.22 * sc;
-    vec2 cB = vec2(-edge * 0.8, 0.05 + (uAfter - 2.5) * 0.42) + par;
-    float front;
-    vec4 rg = rings(uv, cB, RB, front);
-    col = mix(col, rg.rgb, rg.a * (1.0 - front) * reveal);
-    pcol = planet(uv, cB, RB, normalize(vec3(-0.7, 0.45, 0.4)), vec3(0.22, 0.07, 0.38),
-                  vec3(0.85, 0.48, 0.78), vec3(0.7, 0.45, 1.0), 7.0, 1.0, t, cover);
-    col = col * (1.0 - cover * reveal) + pcol * reveal;
-    col = mix(col, rg.rgb, rg.a * front * reveal);
+    // Fly-bys: each planet starts small near the vanishing point, grows as we approach and slides
+    // out past the edge of the screen. z runs 0 → 1 over ~2.4 screens of scrolling around its anchor.
+    // Violet gas giant with rings, passing on the left near the outro.
+    float zB = clamp((uAfter - 2.6 + 1.2) / 2.4, 0.0, 1.0);
+    if (zB > 0.0 && zB < 1.0) {
+      float g = 0.3 + zB * zB * 2.2;
+      float RB = 0.2 * sc * g;
+      vec2 cB = vp + vec2(-(0.12 + zB * zB * edge * 1.3), 0.06 + zB * 0.25) + par;
+      float fadeB = smoothstep(0.0, 0.12, zB);
+      float front;
+      vec4 rg = rings(uv, cB, RB, front);
+      col = mix(col, rg.rgb, rg.a * (1.0 - front) * fadeB);
+      pcol = planet(uv, cB, RB, normalize(vec3(-0.7, 0.45, 0.4)), vec3(0.22, 0.07, 0.38),
+                    vec3(0.85, 0.48, 0.78), vec3(0.7, 0.45, 1.0), 7.0, 1.0, t, cover);
+      col = col * (1.0 - cover * fadeB) + pcol * fadeB;
+      col = mix(col, rg.rgb, rg.a * front * fadeB);
+    }
 
-    // Teal ice giant (right) and its small rocky moon, which is closer and moves faster.
-    float RA = 0.24 * sc;
-    vec2 cA = vec2(edge * 0.82, 0.08 + (uAfter - 1.0) * 0.42) + par;
+    // Teal ice giant passing on the right, behind the project overview, with its small moon.
     vec3 LA = normalize(vec3(0.75, 0.45, 0.35));
-    pcol = planet(uv, cA, RA, LA, vec3(0.04, 0.26, 0.34), vec3(0.4, 0.78, 0.82),
-                  vec3(0.3, 0.8, 1.0), 3.0, 2.0, t, cover);
-    col = col * (1.0 - cover * reveal) + pcol * reveal;
-
-    float RC = 0.045 * sc;
-    vec2 cC = vec2(edge * 0.56, -0.1 + (uAfter - 1.3) * 0.75) + par * 2.0;
-    pcol = planet(uv, cC, RC, LA, vec3(0.2, 0.1, 0.07), vec3(0.75, 0.5, 0.36),
-                  vec3(1.0, 0.55, 0.3), 1.5, 3.0, t, cover);
-    col = col * (1.0 - cover * reveal) + pcol * reveal;
+    float zA = clamp((uAfter - 1.7 + 1.2) / 2.4, 0.0, 1.0);
+    if (zA > 0.0 && zA < 1.0) {
+      float g = 0.3 + zA * zA * 2.2;
+      float RA = 0.22 * sc * g;
+      vec2 cA = vp + vec2(0.14 + zA * zA * edge * 1.3, -0.04 + zA * 0.2) + par;
+      float fadeA = smoothstep(0.0, 0.12, zA);
+      pcol = planet(uv, cA, RA, LA, vec3(0.04, 0.26, 0.34), vec3(0.4, 0.78, 0.82),
+                    vec3(0.3, 0.8, 1.0), 3.0, 2.0, t, cover);
+      col = col * (1.0 - cover * fadeA) + pcol * fadeA;
+    }
+    float zC = clamp((uAfter - 2.0 + 0.8) / 1.6, 0.0, 1.0);
+    if (zC > 0.0 && zC < 1.0) {
+      float g = 0.3 + zC * zC * 3.0;
+      float RC = 0.04 * sc * g;
+      vec2 cC = vp + vec2(0.08 + zC * zC * edge * 1.1, -0.1 - zC * 0.25) + par * 2.0;
+      float fadeC = smoothstep(0.0, 0.12, zC);
+      pcol = planet(uv, cC, RC, LA, vec3(0.2, 0.1, 0.07), vec3(0.75, 0.5, 0.36),
+                    vec3(1.0, 0.55, 0.3), 1.5, 3.0, t, cover);
+      col = col * (1.0 - cover * fadeC) + pcol * fadeC;
+    }
   }
 
-  // Matter spiralling in while we fall towards the hole.
+  // ---------- the explosion: flowing colour gas, shockwave and debris ----------
+  float gasAmt = blast * (1.0 - settle * 0.7) * sing;
+  if (gasAmt > 0.001) {
+    float r = rl;
+    vec2 qd = udir;
+    // Plumes stream outwards: the sample point slides inwards as you scroll (and slowly over time).
+    float flow = r * 1.6 - s * 5.0 - t * 0.04;
+    float g1 = fbm(qd * 2.2 + vec2(flow, -flow * 0.6));
+    float g2 = fbm(qd * 4.5 + vec2(-flow * 1.3, flow) + g1 * 1.6);
+    float plume = smoothstep(0.35, 0.85, g1 * 0.6 + g2 * 0.6);
+    float inside = 1.0 - smoothstep(ringR * 0.55, ringR * 1.05, r);
+    // Hue varies smoothly with direction (atan would jump at ±180° and leave a seam).
+    vec3 gasCol = spectrum(g2 * 0.9 + dot(qd, vec2(0.14, 0.09)) + s * 0.8 + 0.55);
+    col += gasCol * plume * inside * gasAmt * 0.75;
+
+    float w = 0.06 + ringR * 0.05;
+    float front = exp(-pow((rr - ringR) / w, 2.0));
+    float ragged = 0.6 + 0.4 * noise(udir * 10.0 + ringR * 3.0);
+    col += spectrum(dot(udir, vec2(0.22, 0.12)) + s) * front * ragged * gasAmt * (1.0 - smoothstep(1.2, 2.4, ringR)) * 0.8;
+
+    for (int i = 0; i < 2; i++) {
+      float fi = float(i);
+      float sa = (atan(pc.y, pc.x) / TAU + 0.5) * (90.0 + fi * 70.0);
+      float cell = floor(sa);
+      float hh = hash12(vec2(cell, 3.0 + fi));
+      float pr = fract(hh * 7.0 + s * (1.2 + hh) + t * 0.015) * ringR * 1.1;
+      float seg = (r - pr) / (0.02 + ringR * 0.06);
+      float spark = smoothstep(-1.0, 0.0, seg) * (1.0 - smoothstep(0.0, 0.15, seg));
+      float sw = pow(1.0 - smoothstep(0.0, 0.5, abs(fract(sa) - 0.5)), 6.0);
+      col += spectrum(hh * 2.3 + fi * 0.4) * spark * sw * step(0.45, hash12(vec2(cell, 9.0 + fi))) * gasAmt * 1.2;
+    }
+  }
+
+  // Matter spiralling into the hole from the first scroll.
   if (infallAmt > 0.001) {
-    col += infall(pc, R, t) * infallAmt * 1.1;
+    col += infall(pc, R, t) * infallAmt * 1.2;
   }
 
-  // Singularity
-  float occlusion = 0.0;
+  // The intact black hole, growing restless until the meteor hits it.
   if (singFade > 0.001) {
-    vec3 sing = singularity(pc, R, t, occlusion);
-    occlusion *= singFade;
-    col = col * (1.0 - occlusion) + sing * singFade + streaks * occlusion * 0.85;
+    float occ;
+    vec3 sh = singularity(pc, R, t + s * 6.0, occ);
+    sh *= 1.0 + unstable * 0.6;
+    occ *= singFade;
+    col = col * (1.0 - occ) + sh * singFade + streaks * occ * 0.85;
   }
 
-  // Light burst from the centre as we pass the horizon.
-  float burst = exp(-rl * 1.7);
-  col *= 1.0 - flash * 0.6; // streaks dissolve into the light
-  col += flash * (vec3(1.0, 0.9, 0.78) * burst * 4.0 + vec3(1.0, 0.45, 0.12) * burst * 1.2);
-
-  // The shockwave itself: a chromatic ring plus debris flung outwards.
-  float shockAmt = uSingularity * smoothstep(0.0, 0.06, ringR) * (1.0 - smoothstep(0.7, 1.7, ringR));
-  if (shockAmt > 0.001) {
-    float w = 0.03 + ringR * 0.035;
-    vec3 ring = vec3(
-      exp(-pow((rr - ringR * 1.03) / w, 2.0)),
-      exp(-pow((rr - ringR) / w, 2.0)),
-      exp(-pow((rr - ringR * 0.97) / w, 2.0))
-    );
-    float ragged = 0.55 + 0.45 * noise(udir * 14.0 + ringR * 4.0);
-    col += ring * vec3(1.0, 0.7, 1.0) * ragged * shockAmt * 1.6;
-    // Afterglow inside the ring.
-    col += mix(vec3(0.55, 0.2, 1.0), vec3(1.0, 0.3, 0.55), min(rl / max(ringR, 1e-3), 1.0))
-         * (1.0 - smoothstep(0.0, ringR, rl)) * shockAmt * 0.2;
-    // Debris: radial sparks just behind the front.
-    float sa = (atan(uv.y, uv.x) / TAU + 0.5) * 150.0;
-    float cell = floor(sa);
-    float hh = hash12(vec2(cell, 3.0));
-    float seg = (rl - ringR * (0.55 + 0.5 * hh)) / (0.03 + ringR * 0.1);
-    float spark = smoothstep(-1.0, 0.0, seg) * (1.0 - smoothstep(0.0, 0.12, seg));
-    float sw = pow(1.0 - smoothstep(0.0, 0.5, abs(fract(sa) - 0.5)), 6.0);
-    col += spectrum(hh * 2.3) * spark * sw * step(0.5, hash12(vec2(cell, 9.0))) * shockAmt * 1.4;
+  // After the impact: the hole in pieces, flying towards the camera.
+  if (hit > 0.001 && shatter < 1.0) {
+    float cover;
+    vec3 shard = shards(uv, c, R, shatter, cover);
+    col = mix(col, shard, cover * hit);
   }
+
+  // The meteor: comes in from the top right, speeding up, with a burning tail.
+  float meteorAmt = smoothstep(0.04, 0.09, s) * (1.0 - hit) * sing;
+  if (meteorAmt > 0.001) {
+    float mt = smoothstep(0.05, IMPACT, s);
+    mt *= 0.35 + 0.65 * mt; // speeds up as it closes in
+    vec2 from = c + normalize(vec2(1.0, 0.72)) * (0.75 + 0.3 * aspect);
+    vec2 mdir = normalize(c - from);
+    vec2 mpos = mix(from, c - mdir * R * 0.9, mt);
+    vec2 dm = uv - mpos;
+    float along = dot(dm, -mdir);
+    float perp = abs(dot(dm, vec2(-mdir.y, mdir.x)));
+    float tailLen = 0.22 + mt * 0.55;
+    float behind = max(along, 0.0); // ahead of the head there is no tail (and no division by ~0)
+    float tail = step(0.0, along) * exp(-behind / tailLen) * exp(-perp / (0.006 + behind * 0.07));
+    float flick = 0.7 + 0.3 * noise(vec2(behind * 30.0 - t * 25.0, perp * 80.0));
+    float head = exp(-length(dm) * 38.0);
+    vec3 mcol = vec3(1.0, 0.9, 0.7) * head * 3.5;
+    mcol += mix(vec3(1.0, 0.6, 0.2), vec3(0.85, 0.2, 0.05), clamp(behind / tailLen, 0.0, 1.0)) * tail * flick * 1.7;
+    mcol += vec3(1.0, 0.5, 0.15) * exp(-length(dm) * 9.0) * 0.3 * (0.3 + mt);
+    col += mcol * meteorAmt;
+  }
+
+  // Impact flare: warm and short, a glow rather than a white flash.
+  float flare = exp(-pow((s - IMPACT - 0.01) / 0.03, 2.0)) * sing;
+  col += mix(vec3(1.0, 0.5, 0.15), vec3(1.0, 0.8, 0.55), exp(-rl * 8.0)) * exp(-rl * 3.5) * flare * 0.9;
 
   // Tone map, vignette, grain
   col = 1.0 - exp(-col * 1.25);
-  float vig = 1.0 - 0.6 * pow(length(uv * vec2(0.75, 1.0)), 2.2);
+  float vig = 1.0 - 0.6 * pow(length(uv0 * vec2(0.75, 1.0)), 2.2);
   col *= clamp(vig, 0.0, 1.0);
-
-  // Light theme: paper, with the scene printed as ink (orange at home, its own hue on the far side).
-  // The hole becomes a slightly deeper paper tone (an annular eclipse), so dark text keeps contrast.
-  vec3 paper = vec3(0.965, 0.945, 0.918);
-  float ink = clamp(dot(col, vec3(0.35, 0.5, 0.15)) * 1.5, 0.0, 1.0);
-  vec3 hue = col / max(max(col.r, max(col.g, col.b)), 1e-3);
-  vec3 inkCol = mix(vec3(0.95, 0.42, 0.06), hue * 0.78, reveal * 0.65);
-  vec3 lightCol = mix(paper, inkCol, ink * 0.9);
-  lightCol = mix(lightCol, vec3(0.9, 0.86, 0.81), occlusion);
-  col = mix(col, lightCol, uLight);
-
   col += (hash12(gl_FragCoord.xy + fract(t * 7.3) * 113.0) - 0.5) * 0.025;
   outColor = vec4(col, 1.0);
 }`;

@@ -73,7 +73,6 @@ export interface World {
   clouds: Group;
   flag: Object3D;
   start: { up: Vector3; heading: Vector3 };
-  setTheme(dark: boolean): void;
 }
 
 const Y = new Vector3(0, 1, 0);
@@ -591,7 +590,6 @@ export function buildWorld(data: PlanetData): World {
   const clouds = buildClouds(rand);
   root.add(clouds);
 
-  const daySun = new Color('#ffffff');
   return {
     root,
     planet,
@@ -601,8 +599,5 @@ export function buildWorld(data: PlanetData): World {
     clouds,
     flag,
     start: { up: POLE.clone(), heading: FORWARD.clone() },
-    setTheme(dark: boolean) {
-      (planet.material as MeshStandardMaterial).color.copy(dark ? new Color('#c9d2ff') : daySun);
-    },
   };
 }

@@ -24,13 +24,18 @@
 
   let launchEnd = 1;
   let hasLaunch = false;
+  let lastWidth = innerWidth;
+
+  // The canvas is sized to the *large* viewport (100lvh), which does not change when a phone's
+  // address bar slides in and out. Measuring against it keeps the scene from jumping mid-scroll.
+  const viewportHeight = () => canvas?.clientHeight || innerHeight;
 
   function measure() {
     const launch = document.querySelector<HTMLElement>('[data-launch]');
     hasLaunch = launch !== null;
     if (launch) {
       const rect = launch.getBoundingClientRect();
-      launchEnd = Math.max(1, rect.bottom + scrollY - innerHeight);
+      launchEnd = Math.max(1, rect.bottom + scrollY - viewportHeight());
     }
     // Centre the black hole on the focus element (the hero title) as laid out at the top of the page.
     const focus = document.querySelector<HTMLElement>('[data-cosmos-focus]');
@@ -38,8 +43,9 @@
       const rect = focus.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + scrollY + rect.height / 2;
-      cosmos.target.focusX = (cx - innerWidth / 2) / innerHeight;
-      cosmos.target.focusY = (innerHeight / 2 - cy) / innerHeight;
+      const vh = viewportHeight();
+      cosmos.target.focusX = (cx - innerWidth / 2) / vh;
+      cosmos.target.focusY = (vh / 2 - cy) / vh;
     }
   }
 
@@ -48,10 +54,10 @@
 
   function onScroll() {
     if (!cosmos) return;
-    const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+    const max = Math.max(1, document.documentElement.scrollHeight - viewportHeight());
     cosmos.target.launch = hasLaunch ? Math.min(1, scrollY / launchEnd) : 1;
     cosmos.target.drift = scrollY / max;
-    cosmos.target.after = Math.max(0, scrollY - (hasLaunch ? launchEnd : 0)) / innerHeight;
+    cosmos.target.after = Math.max(0, scrollY - (hasLaunch ? launchEnd : 0)) / viewportHeight();
     if (!motion.matches) {
       cosmos.renderOnce();
       return;
@@ -71,30 +77,22 @@
     cosmos.target.mouseY = -((event.clientY / innerHeight) * 2 - 1);
   }
 
-  function syncTheme() {
-    if (!cosmos) return;
-    cosmos.target.light = document.documentElement.dataset.theme === 'light' ? 1 : 0;
-    if (!motion.matches) cosmos.renderOnce();
-  }
-
   if (cosmos) {
     cosmos.onFrame = updateTelemetry;
     addEventListener('scroll', onScroll, { passive: true });
+    // Only re-measure on real layout changes (width/rotation), not the address bar.
     addEventListener('resize', () => {
+      if (innerWidth === lastWidth) return;
+      lastWidth = innerWidth;
       measure();
       onScroll();
     });
     addEventListener('pointermove', onPointer, { passive: true });
-    new MutationObserver(syncTheme).observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme'],
-    });
 
     document.addEventListener('astro:page-load', () => {
       lastY = scrollY; // navigation resets scroll; don't count it as velocity
       measure();
       cosmos.target.singularity = hasLaunch ? 1 : 0;
-      syncTheme();
       onScroll();
       // On first load, appear in place instead of easing in from defaults.
       if (!canvas?.dataset.ready) {
@@ -104,6 +102,22 @@
       if (motion.matches) cosmos.start();
       else cosmos.renderOnce();
     });
+
+    // WebKit (Safari) crashes when a view transition snapshots a live WebGL canvas. Take the
+    // canvas out of the page for the few hundred milliseconds of a page transition there.
+    const ua = navigator.userAgent;
+    if (canvas && /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg/.test(ua)) {
+      const show = () => canvas.style.removeProperty('display');
+      document.addEventListener('astro:before-preparation', () => {
+        canvas.style.display = 'none';
+      });
+      document.addEventListener('astro:before-swap', (event) => {
+        const transition = (event as Event & { viewTransition?: ViewTransition }).viewTransition;
+        if (transition) void transition.finished.finally(show);
+        else show();
+        setTimeout(show, 1500); // safety net
+      });
+    }
 
     // The planet game covers the whole screen; no need to draw the sky behind it.
     addEventListener('cosmos:occluded', (event) => {
@@ -123,10 +137,12 @@
 <style>
   .cosmos {
     position: fixed;
-    inset: 0;
+    top: 0;
+    left: 0;
     z-index: -1;
     width: 100%;
-    height: 100%;
+    height: 100vh;
+    height: 100lvh;
     max-width: none;
     opacity: 0;
     transition: opacity 1.6s var(--ease-out);

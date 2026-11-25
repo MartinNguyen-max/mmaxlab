@@ -33,6 +33,8 @@ pnpm og             # regenerate public/og.png (after build)
 ## Gotchas
 
 - Only one `astro preview` can run at a time (Astro 7 lockfile). Stop it with `pnpm astro preview stop`.
+- Safari: the cosmos canvas must be hidden (`display: none`) during view transitions, or WebKit crashes (see Cosmos.astro). Run `pnpm test:e2e --project=iphone` after touching transitions or WebGL.
+- `<main>` is a stacking context (view transitions); fixed overlays inside it can't cover the header with z-index.
 - Keep `cssMinify: false` in `astro.config.mjs` (see docs/decisions.md) or scroll animations break.
-- The planet game (`src/scripts/planet/`) must stay lazy-loaded and pause when off-screen. Driving uses `src/lib/sphere.ts` (unit-tested); obstacles only push outwards, so the rover can never get stuck.
+- The planet game (`src/scripts/planet/`) loads only on Start and pauses when off-screen. Driving uses `src/lib/sphere.ts` (unit-tested); obstacles only push outwards, so the rover can never get stuck.
 - The shader timeline (`src/scripts/cosmos/shader.ts`) and the launch text ranges (`LaunchSequence.astro`) are tuned together. Change both.

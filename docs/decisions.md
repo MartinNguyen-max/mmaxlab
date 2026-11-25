@@ -78,3 +78,24 @@ Sources: astro.build/blog/astro-7, docs.astro.build/en/guides/upgrade-to/v7, doc
 | Tests       | Playwright timeouts raised (60 s / 12 s).                                                                                                                                                       | Headless Chrome renders WebGL on the CPU (SwiftShader).                                                        |
 
 - **Screenshots** are captured at 2× (2880×1800) and the overview requests sizes that match the real card width. Before, a 24rem `sizes` hint made browsers upscale a small image, which looked blurry.
+
+## 2026-11-25 · Phone feedback (round 3)
+
+| Topic        | Decision                                                                                                                                                                                                      | Why                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Twitching    | Background canvas sized to `100lvh`; measurements use that height; resize only on width change; redraw immediately after resize.                                                                              | Phone address bars resize the viewport while scrolling, which blanked the canvas and moved the scene. |
+| Sideways pan | Launch section `overflow-x: clip` (+ `html`). E2E test checks `scrollWidth` at several scroll positions.                                                                                                      | The launch lines scale to 115 % as they leave and stuck out 29 px.                                    |
+| Intro        | Scroll-driven: stars stream from the first pixel, the hole collapses and explodes into colour gas + debris, a green planet rises. No white flash, nothing timed.                                              | Phone feedback: start earlier, more colour, no flashes, smooth when scrolling slowly.                 |
+| Game loading | Blurred still (`planet-poster.png`) until **Start**; three.js prefetches on hover/touch of Start and loads on press.                                                                                          | Zero cost for people who don't play; no hitch while scrolling.                                        |
+| Play mode    | Start → fullscreen, page scrolling paused; ✕ / Esc exits, ⌂ returns to the landing zone. Header and HUD hidden while playing.                                                                                 | Drag means "look around" in the game and "scroll" on the page; an explicit mode removes the conflict. |
+| Controls     | Joystick (touch), WASD/arrows, drag to look, wheel to zoom. Rover turns on the spot. Tap-to-drive removed.                                                                                                    | Tap-to-drive circled around targets behind you; on-the-spot turning means you can't get stuck.        |
+| Opening      | Tapping a screen only shows a compact card. Its **Open ↗** is a real `target="_blank"` link (Enter clicks it).                                                                                                | Delayed `window.open` after an animation is blocked by Safari, which fell back to the same tab.       |
+| Safari       | WebKit crashes when a view transition snapshots a live WebGL canvas, so the cosmos canvas is `display: none` during page transitions there. A WebKit (iPhone 15) Playwright project now runs the whole suite. | Found by the new iPhone tests.                                                                        |
+
+## 2026-11-25 · Feedback round 4
+
+- **Dark only.** The light theme, its toggle and all light styles are gone; the shader's light mode too. The planet game keeps its sunny sky (the one bright place).
+- **Hero GitHub link:** static gradient border; the spinning conic border was distracting.
+- **Intro:** a meteor streaks in and hits the black hole at 30 % of the launch; camera shake and a warm flare; the hole shatters into ~30 cracked rock pieces (cells with wobbly, shared boundaries, so they fit together) that fly towards the camera while colour gas and debris reveal the far side.
+- **Flight feel:** the background rolls and flies forward to a wandering vanishing point (layers expand at different depths); planets now approach and pass on either side instead of sliding up.
+- **Game:** joystick on the right (thumb side); a solid white **Exit** button.

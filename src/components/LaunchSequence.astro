@@ -51,6 +51,8 @@ const count = lines.length;
   .launch {
     position: relative;
     padding-block: var(--space-24);
+    /* The lines scale up as they leave; never let that widen the page (clip keeps sticky working). */
+    overflow-x: clip;
   }
 
   .lines {
@@ -76,10 +78,6 @@ const count = lines.length;
     line-height: 0.95;
     text-wrap: balance;
     text-shadow: 0 0.05em 0.3em rgb(0 0 0 / 0.5);
-  }
-
-  :global([data-theme='light']) .text {
-    text-shadow: 0 0.05em 0.4em rgb(246 241 234 / 0.8);
   }
 
   .final .text {

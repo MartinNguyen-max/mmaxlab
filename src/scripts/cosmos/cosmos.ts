@@ -6,7 +6,6 @@ const UNIFORMS = [
   'uLaunch',
   'uDrift',
   'uMouse',
-  'uLight',
   'uSingularity',
   'uFocus',
   'uBoost',
@@ -23,7 +22,6 @@ export interface CosmosState {
   drift: number;
   mouseX: number;
   mouseY: number;
-  light: number;
   singularity: number;
   focusX: number;
   focusY: number;
@@ -53,7 +51,6 @@ export class Cosmos {
     drift: 0,
     mouseX: 0,
     mouseY: 0,
-    light: 0,
     singularity: 1,
     focusX: 0,
     focusY: 0.07,
@@ -162,9 +159,14 @@ export class Cosmos {
       this.canvas.width = width;
       this.canvas.height = height;
       this.gl.viewport(0, 0, width, height);
+      // Resizing clears the canvas; redraw right away so no empty frame is ever shown.
+      this.draw();
+    } else if (!this.running) {
+      this.draw();
     }
-    if (!this.running) this.draw();
   }
+
+  private goodWindows = 0;
 
   /** Lower resolution if the device struggles (rolling average over ~1 s). */
   private adaptQuality(dt: number): void {
@@ -172,12 +174,20 @@ export class Cosmos {
     if (this.frameTimes.length < 60) return;
     const avg = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
     this.frameTimes.length = 0;
+    // Step down quickly when struggling, step up only after ~5 s of smooth frames,
+    // so the resolution doesn't flip back and forth.
     if (avg > 24 && this.quality > MIN_QUALITY) {
+      this.goodWindows = 0;
       this.quality = Math.max(MIN_QUALITY, this.quality - 0.15);
       this.resize();
     } else if (avg < 14 && this.quality < 1) {
-      this.quality = Math.min(1, this.quality + 0.05);
-      this.resize();
+      if (++this.goodWindows >= 5) {
+        this.goodWindows = 0;
+        this.quality = Math.min(1, this.quality + 0.1);
+        this.resize();
+      }
+    } else {
+      this.goodWindows = 0;
     }
   }
 
@@ -197,7 +207,6 @@ export class Cosmos {
     c.after = lerp(c.after, t.after, k);
     c.mouseX = lerp(c.mouseX, t.mouseX, kSlow);
     c.mouseY = lerp(c.mouseY, t.mouseY, kSlow);
-    c.light = lerp(c.light, t.light, k);
     c.singularity = lerp(c.singularity, t.singularity, kSlow);
     c.focusX = lerp(c.focusX, t.focusX, k);
     c.focusY = lerp(c.focusY, t.focusY, k);
@@ -217,7 +226,6 @@ export class Cosmos {
     gl.uniform1f(u.uLaunch, c.launch);
     gl.uniform1f(u.uDrift, c.drift);
     gl.uniform2f(u.uMouse, c.mouseX, c.mouseY);
-    gl.uniform1f(u.uLight, c.light);
     gl.uniform1f(u.uSingularity, c.singularity);
     gl.uniform2f(u.uFocus, c.focusX, c.focusY);
     gl.uniform1f(u.uBoost, c.boost);
