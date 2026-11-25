@@ -71,7 +71,7 @@ test.describe('planet game', () => {
     page,
     context,
   }) => {
-    await context.route('https://stramin.vercel.app/**', (route) =>
+    await context.route('https://stramin.mmaxlab.com/**', (route) =>
       route.fulfill({ contentType: 'text/html', body: '<title>Stramin</title>' }),
     );
     // CPU-rendered 3D in headless browsers is slow, especially with other tests running in parallel.

@@ -42,8 +42,8 @@ order: 1
 
 | Project                             | Status      | URL                                                 |
 | ----------------------------------- | ----------- | --------------------------------------------------- |
-| Stramin                             | live        | stramin.vercel.app → stramin.mmaxlab.com            |
-| Rift of Fortune                     | live        | rift-of-fortune-omega.vercel.app → rift.mmaxlab.com |
+| Stramin                             | live        | stramin.mmaxlab.com                                 |
+| Rift of Fortune                     | live        | rift-of-fortune.mmaxlab.com                         |
 | AI Support Bot (placeholder)        | coming-soon | –                                                   |
 | AI Tender Filter (placeholder)      | coming-soon | –                                                   |
 | AI Answering Service (placeholder)  | coming-soon | –                                                   |
