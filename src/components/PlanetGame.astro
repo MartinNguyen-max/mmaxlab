@@ -532,11 +532,11 @@ const data = JSON.stringify({ live, lab });
     cursor: pointer;
   }
 
-  /* Joystick, bottom right (the thumb's side), for touch screens. */
+  /* Joystick, bottom left, for touch screens. */
   @media (pointer: coarse) {
     :global(.is-playing) .joystick {
       position: absolute;
-      right: max(var(--space-6), env(safe-area-inset-right));
+      left: max(var(--space-6), env(safe-area-inset-left));
       bottom: max(var(--space-8), env(safe-area-inset-bottom));
       display: grid;
       place-items: center;

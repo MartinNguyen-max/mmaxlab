@@ -98,4 +98,4 @@ Sources: astro.build/blog/astro-7, docs.astro.build/en/guides/upgrade-to/v7, doc
 - **Hero GitHub link:** static gradient border; the spinning conic border was distracting.
 - **Intro:** a meteor streaks in and hits the black hole at 30 % of the launch; camera shake and a warm flare; the hole shatters into ~30 cracked rock pieces (cells with wobbly, shared boundaries, so they fit together) that fly towards the camera while colour gas and debris reveal the far side.
 - **Flight feel:** the background rolls and flies forward to a wandering vanishing point (layers expand at different depths); planets now approach and pass on either side instead of sliding up.
-- **Game:** joystick on the right (thumb side); a solid white **Exit** button.
+- **Game:** joystick bottom left (tried the right, Martin preferred the left); a solid white **Exit** button.
